@@ -30,3 +30,7 @@ closer to instantaneous.
 ## To-do
 - Use a MutationObserver in order to not run the function on an interval
 - Allows you to copy the being-recorded word by clicking on it (meant to be a feature, but broken)
+
+# License
+I hope for other Bulgarian editors on Wiktionary to be able to use this to help them too, so I want to put no restrictions at all on this script — on the contrary, if there were a license to "give"
+rights or incentivize use I would prefer that! There being no such thing, this project uses the [Unlicense](https://unlicense.org/).
