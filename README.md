@@ -22,10 +22,6 @@ so long as one is available on Wiktionary/Chitanka. Otherwise, no stress is adde
 - Memoizes results so as to not wastefully re-fetch content
 - Automatically pre-fetches the entire wordlist so that you don't encounter any delays while recording
 
-## To-do
-- Use a MutationObserver in order to not run the function on an interval
-- Allows you to copy the being-recorded word by clicking on it (meant to be a feature, but broken)
-
 ## History
 As a further improvement, I made the script memoize its results, meaning that when an entry is fetched, it will be associated with the word for the duration of the session, and
 instead of fetching the content and waiting for it again (if returning to re-record the same word later on), it can be immediately fetched from the local memo.
