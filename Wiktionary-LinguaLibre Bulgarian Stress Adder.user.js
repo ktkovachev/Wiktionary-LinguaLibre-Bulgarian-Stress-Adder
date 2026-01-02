@@ -9,75 +9,112 @@
 const ACUTE = String.fromCodePoint(0x301);
 const GRAVE = String.fromCodePoint(0x300);
 
+function updateCurrentWord(stressed) {
+  const wordElem = document.getElementById("mwe-rws-item");
+  function updateSafely(newValue) {
+    wordObserver.disconnect();
+    wordElem.innerText = newValue;
+    wordObserver.observe(wordElem, observerConfig);
+  }
+  if (!wordElem) { return; }
+  const word = wordElem.innerText;
+  if (word.includes(ACUTE)) { return; }
+  if (stressed.replace(ACUTE, "") === word) {
+  	updateSafely(stressed);
+  }
+}
+
+let previousTitle;
+function studioObserverCallback(mutationList, observer) {
+  for (const mutation of mutationList) {
+    const studio = document.getElementById("mwe-rw-studio");
+    if (previousTitle !== "Studio") {
+      if (studio && studio.firstChild.firstChild.innerText === "Studio") {
+        previousTitle = "Studio";
+        console.debug("[Studio] Entered studio screen.");
+        const wordElem = document.getElementById("mwe-rws-item");
+        wordObserver.observe(wordElem, observerConfig);
+        fetchWord(wordElem.innerText);
+        const unfetchedWordList = [...document.getElementsByClassName("mwe-rws-up")].map(wordElem => wordElem.textContent.trim()).filter(word => !(word in fetchedAlready));
+        for (const otherWord of unfetchedWordList) {
+          console.debug(`Pre-fetching ${otherWord}`);
+          fetchWord(otherWord); 
+        }
+      } else {
+        previousTitle = undefined; 
+      }
+    } else if (!studio) {
+      previousTitle = undefined;
+      wordObserver.disconnect();  // Don't observe when the studio view is gone. May be redundant as the observer becomes invalid at such a point regardless.
+    }
+  }
+}
+
+function wordObserverCallback(mutationList, observer) {
+  const wordElem = document.getElementById("mwe-rws-item");
+	for (const mutation of mutationList) {
+    if (mutation.type === "childList") {
+      console.debug(`[Word] New word is: ${wordElem.innerText}`);
+      fetchWord(wordElem.innerText);
+			break;
+    }
+  }
+}
+
+const observerConfig = {childList: true, };
+const contentWrapperElement = document.getElementById("mwe-rw-content");
+const studioObserver = new MutationObserver(studioObserverCallback);  // Observes when the Studio view is entered, which is useful to (re-)register the wordObserver, because it gets invalidated whenever the view changes.
+const wordObserver = new MutationObserver(wordObserverCallback);  // Observes when a word changes in the Studio view, which results in the word being updated.
+studioObserver.observe(contentWrapperElement, observerConfig);
+
 function documentContainerFromText(text) {
 	const container = document.implementation.createHTMLDocument().documentElement;
   container.innerHTML = text;
   return container;
 }
 
-// Return stressed of word and record in fetchedAlready
-function fetchWord(wordElem, word) {
-	 fetchedAlready[word] = word; // Prevent multiple fetches if it takes a while to get the first page load
-      GM.xmlHttpRequest({
-        method: "GET",
-        url: `https://en.wiktionary.org/wiki/${word}`,
-        onload: function(response) {
-          console.log("Fetched content from Wiktionary");
-          const container = documentContainerFromText(response.responseText);
-          const firstHeadwordElem = container.querySelector('.headword[lang="bg"]');
-          if (firstHeadwordElem) {
-            // Cool, use Wiktionary's lemma
-            const stressed = firstHeadwordElem.textContent.trim();
-            if (stressed && stressed.replace(ACUTE, "") === wordElem.innerText) { // It is possible that the user change to a different word between the time of the fetch and the time of the set; avoid
-              wordElem.innerText = stressed;
-            }
-            fetchedAlready[word] = stressed;
-          } else {
-           	// Maybe the word doesn't exist, try Chitanka instead
-            GM.xmlHttpRequest({
-              method: "GET",
-              url: `https://rechnik.chitanka.info/w/${word}`,
-              onload: function(response) {
-                console.log("Fetched content from Chitanka");
-                const container = documentContainerFromText(response.responseText);
-                const firstHeadwordElem = container.querySelector('#content span');
-                if (firstHeadwordElem) {
-									const stressed = firstHeadwordElem.textContent.trim();
-                  console.log("stressed is " + stressed);
-                  if (stressed && stressed.replace(GRAVE, "") === wordElem.innerText) {
-                    wordElem.innerText = stressed.replace(GRAVE, ACUTE);
-                  }
-                  fetchedAlready[word] = stressed.replace(GRAVE, ACUTE);
-                } else {
-                 	console.log(response.responseText); 
-                }
-              }
-            });
-          }
-        }
-      });
-}
-
 const fetchedAlready = {};
-setInterval(
-  function() {
-		const wordElem = document.getElementById("mwe-rws-item");
-    if (!wordElem) { return; }
-    const word = wordElem.innerText;
-    if (word.includes(ACUTE)) { return ; }
-    if (word in fetchedAlready) {
-      wordElem.innerText = fetchedAlready[word];
-      const unfetchedWordList = [...document.getElementsByClassName("mwe-rws-up")].map(wordElem => wordElem.textContent.trim()).filter(word => !(word in fetchedAlready));
-      for (const otherWord of unfetchedWordList) {
-        	console.log("Trying to fetch " + otherWord + "...");
-					fetchWord(wordElem, otherWord); 
+// Update current word and record stress in fetchedAlready
+function fetchWord(word) {
+  if (word in fetchedAlready) {
+     updateCurrentWord(fetchedAlready[word]); 
+  } else {
+    GM.xmlHttpRequest({
+      method: "GET",
+      url: `https://en.wiktionary.org/wiki/${word}`,
+      onload: function(wiktResponse) {
+        const container = documentContainerFromText(wiktResponse.responseText);
+        const firstHeadwordElem = container.querySelector('.headword[lang="bg"]');
+        if (firstHeadwordElem) {
+          // Cool, use Wiktionary's lemma
+          const stressed = firstHeadwordElem.textContent.trim();
+          fetchedAlready[word] = stressed;
+          updateCurrentWord(fetchedAlready[word]);
+        } else {
+          // Maybe the word doesn't exist, try Chitanka instead
+          GM.xmlHttpRequest({
+            method: "GET",
+            url: `https://rechnik.chitanka.info/w/${word}`,
+            onload: function(chitankaResponse) {
+              const container = documentContainerFromText(chitankaResponse.responseText);
+              const firstHeadwordElem = container.querySelector('#content span');
+              if (firstHeadwordElem) {
+                const stressed = firstHeadwordElem.textContent.trim().replace(GRAVE, ACUTE);
+                fetchedAlready[word] = stressed;
+                updateCurrentWord(fetchedAlready[word]);
+              } else {
+                console.error(`Failed to get both Wiktionary and Chitanka data for ${word}. See below dropdowns for their responses:`);
+                console.groupCollapsed("Wiktionary response");
+                console.debug(wiktResponse.responseText);
+                console.groupEnd();
+                console.groupCollapsed("Chitanka response");
+                console.debug(chitankaResponse.responseText);
+                console.groupEnd();
+              }
+            }
+          });
+        }
       }
-    } else {
-      fetchWord(wordElem, word);
-    }
-    // Allow copying the original word if needed (constantly setting its value in the DOM makes it impossible to select)
-    wordElem.onClick = function() {
-      navigator.clipboard.writeText(wordElem.innerText);
-    }
-  }, 30
-)
+    });
+  }
+}
