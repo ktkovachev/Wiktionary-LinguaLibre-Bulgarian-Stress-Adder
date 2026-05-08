@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name     Wiktionary-LinguaLibre Bulgarian Stress Adder
-// @version  1
+// @version  1.2
 // @grant    GM.xmlHttpRequest
 // @author	Kiril Kovachev
 // @description Automatically pulls in the stressed form of a Bulgarian lemma on the LinguaLibre record wizard, making it much quicker to know what stress words have.
@@ -85,7 +85,7 @@ function fetchWord(word) {
       onload: function(wiktResponse) {
         const container = documentContainerFromText(wiktResponse.responseText);
         const firstHeadwordElem = container.querySelector('.headword[lang="bg"]');
-        if (firstHeadwordElem) {
+        if (firstHeadwordElem && firstHeadwordElem.textContent.includes(ACUTE)) {
           // Cool, use Wiktionary's lemma
           const stressed = firstHeadwordElem.textContent.trim();
           fetchedAlready[word] = stressed;
@@ -98,7 +98,7 @@ function fetchWord(word) {
             onload: function(chitankaResponse) {
               const container = documentContainerFromText(chitankaResponse.responseText);
               const firstHeadwordElem = container.querySelector('#content span');
-              if (firstHeadwordElem) {
+              if (firstHeadwordElem && firstHeadwordElem.textContent.includes(GRAVE)) {
                 const stressed = firstHeadwordElem.textContent.trim().replace(GRAVE, ACUTE);
                 fetchedAlready[word] = stressed;
                 updateCurrentWord(fetchedAlready[word]);
@@ -109,6 +109,7 @@ function fetchWord(word) {
                 console.groupEnd();
                 console.groupCollapsed("Chitanka response");
                 console.debug(chitankaResponse.responseText);
+                console.debug(firstHeadwordElem.textContent);
                 console.groupEnd();
               }
             }
