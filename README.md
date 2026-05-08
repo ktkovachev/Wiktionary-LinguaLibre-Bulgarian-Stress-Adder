@@ -1,6 +1,9 @@
 # Wiktionary-LinguaLibre Bulgarian Stress Adder
 This is a Greasemonkey user script for use on the [LinguaLibre](https://lingualibre.org) recording wizard, which automatically fetches the accented headword from [Wiktionary](https://en.wiktionary.org) or [Chitanka](https://rechnik.chitanka.info).
 
+![Annotated screenshot of the stress adder, with the word влиятелен having been transformed to влия́телен using the script.](showcase.png)
+
+
 ## About
 Using LinguaLibre, you can record massive amounts of audio in one session (hundreds per hour), which I use to record Bulgarian words for Wiktionary. This is a very efficient process,
 but it is hampered by the fact that you very often don't know the stress of every word in the dictionary; this makes it necessary to look up the word in question on Wiktionary or Chitanka
